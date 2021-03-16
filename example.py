@@ -1,4 +1,5 @@
 import abilibili
+import asyncio
 
 
 """
@@ -45,3 +46,7 @@ async def main():
             filename = f"[{c}]{title}.mp4"
             with open(filename, 'wb') as video:
                 video.write(videos[c])
+
+                
+if __name__ == '__main__':
+    asyncio.run(main())
