@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 from aiohttp import ClientSession, TCPConnector, ClientTimeout, ClientResponse
 from lxml import etree
 from typing import List
@@ -55,9 +58,10 @@ class BilibiliClient(object):
                 )
                 return response
             except Exception as error:
-                print(error)
+                print(error, '这里')
                 continue
-        raise Exception(f'请求错误:\t{url}')
+        # raise Exception(f'请求错误:\t{url}')
+        exit(1)
 
     async def OPTIONS(
             self,
@@ -137,7 +141,10 @@ class BilibiliVideo(object):
         if self._html_tree is None:
             await self._html()
         init = self._html_tree.xpath("/html/head/script[6]/text()")[0]
-        self._cache_init_state = json.loads(re.search('{[^;]+}', init).group())
+        a = re.search(r'{.*(?=;\(function)', init).group()
+        self._cache_init_state = json.loads(a)
+        with open('test1.json', 'w', encoding='utf8') as f:
+            f.write(a)
         return self._cache_init_state
 
     async def _get_init(self, *keys):
@@ -181,7 +188,9 @@ class BilibiliVideo(object):
 
     @property
     async def image_url(self) -> str:
-        return re.sub(r'/i2\.', r'/i0\.', await self._get_init('videoData', 'pic'))
+        url = re.sub(r'/i2\.', r'/i0\.', await self._get_init('videoData', 'pic'))
+        url = re.sub(r'\\', '', url)
+        return url
 
     async def image(self) -> bytes:
         response = await self._session.GET(url=await self.image_url)
@@ -194,13 +203,20 @@ class BilibiliVideo(object):
 
     @property
     async def videos(self) -> List[str]:
-        video_result = await self._get_play('data', 'dash', 'video')
-        return [video_['baseUrl'] for video_ in video_result]
+        try:
+            video_result = await self._get_play('data', 'dash', 'video')
+            return [video_['baseUrl'] for video_ in video_result]
+        except KeyError:
+            video_result = await self._get_play('data', 'durl')
+            return [video_['url'] for video_ in video_result]
 
     @property
     async def audios(self) -> List[str]:
-        audios_result = await self._get_play('data', 'dash', 'audio')
-        return [audio_['baseUrl'] for audio_ in audios_result]
+        try:
+            audios_result = await self._get_play('data', 'dash', 'audio')
+            return [audio_['baseUrl'] for audio_ in audios_result]
+        except KeyError:
+            return []
 
     async def _fetch(self, cls: str):
         headers = {'referer': self.BASEURL + '/'}
@@ -209,6 +225,8 @@ class BilibiliVideo(object):
             urls = await self.videos
         else:
             urls = await self.audios
+            if not urls:
+                return b''
 
         if self._init_get_video is None:
             if self.params['p'] > await self.count:
@@ -231,6 +249,9 @@ class BilibiliVideo(object):
         tmp_file_mp4 = await self.fetch_video()
         tmp_file_mp3_fn = str(uuid4()) + '.mp3'
         tmp_file_mp3 = await self.fetch_audio()
+
+        if not tmp_file_mp3:
+            return tmp_file_mp4
 
         with open(tmp_file_mp4_fn, 'wb') as tf4:
             tf4.write(tmp_file_mp4)
