@@ -261,5 +261,3 @@ async def fetch_bilibili_video(bc: BilibiliClient, url: str, begin_p: int = 1, e
         begin_p += 1
         returns.append(await video.fetch())
     return returns
-
-
