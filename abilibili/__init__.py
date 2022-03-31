@@ -1,1 +1,1 @@
-from .base import BilibiliInitError, BilibiliSession, BilibiliVideoInfo, BilibiliVideo
+from .base import BilibiliSession, BilibiliVideoInfo, BilibiliVideo
